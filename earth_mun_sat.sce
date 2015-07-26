@@ -11,21 +11,10 @@ m(1) =5e2; //Satellit
 number_objects = size(m);
 
 mean_lunar_orbit=384400000;
-//x(:,3) =[-x*m(2)/(m(2)+m(3));0];
-//x(:,2) =[x*m(3)/(m(2)+m(3));0];
+
 x(:,3)=[0;0]
 x(:,2)=[mean_lunar_orbit;0]
 x(:,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (x(:,2) - x(:,3)) + x(:,3)
-//x(:,1) = x(:,2) + [1750000+100000;0]
-
-mu = m(2)/(m(2)+m(3))
-r = x(:,3)-x(:,2)
-xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
-xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
-xl(:,3) = x(:,3)-r+r*mu*5/12
-xl(:,4) = [cosd(60),-sind(60);sind(60),cosd(60)] * (x(:,2) - x(:,3)) + x(:,3)
-xl(:,5) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (x(:,2) - x(:,3)) + x(:,3)
-
 
 v(:,2) =[0;1017];
 v(:,3) =[0;-v(2,2)*m(2)/m(3)];
@@ -34,25 +23,19 @@ v(:,1) =[-sind(-60)*v(2,2);cosd(-60)*v(2,2)]; // Nicht die korrekte Orbitgeschwi
 a = zeros(2,number_objects(1))
 
 
-
 f=gcf();
 scale = 3
 axis=gca();axis.data_bounds=[-384400000*scale -384400000*scale; 384400000*scale 384400000*scale];
 
 circsize = 384400000/50
-//circsize =6371000
+
 aspectratio =16/10 // Monitor Aspect Ratio - makes the circles round, even when they should not be
 
 xfarcs([x(1,1);x(2,1);circsize;circsize*aspectratio;0;360*64],5);r1=gce();r1=r1.children;
-//xstring(x(1,1),x(2,1),"Sat");s1=gce()
-
 
 xfarcs([x(1,2);x(2,2);circsize;circsize*aspectratio;0;360*64],2);r2=gce();r2=r2.children;
-//xstring(x(1,2),x(2,2),"Moon");s2=gce()
-
 
 xfarcs([x(1,3);x(2,3);circsize;circsize*aspectratio;0;360*64],15);r3=gce();r3=r3.children;
-//xstring(x(1,3),x(2,3),"Earth");s3=gce()
 
 xfarcs([xl(1,1);xl(2,1);circsize/2;circsize/2*aspectratio;0;360*64],1);l(1)=gce();l(1)=l(1).children;
 xfarcs([xl(1,2);xl(2,2);circsize/2;circsize/2*aspectratio;0;360*64],1);l2=gce();l2=l2.children;
@@ -68,6 +51,7 @@ while 1
      
     i=i+1 
     
+    //----- Calculation ------
     for j=1:number_objects(1)
         a(:,j) = [0;0]
         for k=1:number_objects(1)
@@ -78,20 +62,8 @@ while 1
         v(:,j) = v(:,j) + a(:,j)*dt;
         x(:,j) = x(:,j) + v(:,j)*dt;
     end
-    // a = 2*n * n Matrix 
-    //in Spalte j stehen die Beschleunigungen für das Objekt j
-    //in der Doppelzeile a([2*k-1:2*k],j) steht die partielle Beschleunigung von j durch Objekt k
-    //auf der Diagonalen a([2*j-1:2*j],j) steht die Gesamtbeschleunigung von j durch die Summe der partiellen Beschleunigungen
     
-//    v(:,1) = v(:,1) + a(:,1)*dt;
-//    v(:,2) = v(:,2) + a(:,2)*dt;
-//    v(:,3) = v(:,3) + a(:,3)*dt;
-//
-//
-//    x(:,1) = x(:,1) + v(:,1)*dt;
-//    x(:,2) = x(:,2) + v(:,2)*dt;
-//    x(:,3) = x(:,3) + v(:,3)*dt;
-
+    mu = m(2)/(m(2)+m(3))
     r = x(:,2)-x(:,3)
     xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
     xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
@@ -99,7 +71,6 @@ while 1
     xl(:,4) = rotate(r,%pi/3,x(:,3))
     xl(:,5) = rotate(r,-%pi/3,x(:,3))
     
-      
     
     //----- Projection ------
     if (r(1) > 0) then
@@ -122,8 +93,8 @@ while 1
     xnl3 = rotate(xl(:,3)-offset_object,-phi)
     xnl4 = rotate(xl(:,4)-offset_object,-phi)
     xnl5 = rotate(xl(:,5)-offset_object,-phi)
-p1(:,i) = xn1  
-
+    
+     
     //----- Drawing ------
     r1.data = [xn1(1);xn1(2);circsize;circsize*aspectratio;0;360*64]
     r2.data = [xn2(1);xn2(2);circsize;circsize*aspectratio;0;360*64]
@@ -134,18 +105,9 @@ p1(:,i) = xn1
     l4.data = [xnl4(1);xnl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
     l5.data = [xnl5(1);xnl5(2);circsize/2;circsize/2*aspectratio;0;360*64]
     
+    p1(:,i) = xn1 
     if i == 500 then
         plot(p1(1,:),p1(2,:),"r")
         i=0
     end
-
 end
-
-
-//    plot(x(1,1),x(2,1),"r+")
-//    plot(x(1,2),x(2,2),"+")
-//
-//plot(p1(1,:),p1(2,:),"r")
-//plot(p2(1,:),p2(2,:),"--")
-//plot(p3(1,:),p3(2,:),"g")
-//
