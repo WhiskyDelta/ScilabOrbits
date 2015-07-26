@@ -8,6 +8,8 @@ m(3) =5.974*10^24; //Erde
 m(2) =7.349*10^22; //Mond
 m(1) =5e2; //Satellit
 
+number_objects = size(m);
+
 mean_lunar_orbit=384400000;
 //x(:,3) =[-x*m(2)/(m(2)+m(3));0];
 //x(:,2) =[x*m(3)/(m(2)+m(3));0];
@@ -28,7 +30,9 @@ xl(:,5) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (x(:,2) - x(:,3)) + x(:,3
 v(:,2) =[0;1017];
 v(:,3) =[0;-v(2,2)*m(2)/m(3)];
 v(:,1) =[-sind(-60)*v(2,2);cosd(-60)*v(2,2)]; // Nicht die korrekte Orbitgeschwindigkeit
-//v1 = v2 + [0;-2500]
+
+a = zeros(2,number_objects(1))
+
 
 
 f=gcf();
@@ -60,31 +64,33 @@ xarcs([-circsize*50;circsize*50;circsize*100;circsize*100;0;360*64],7); //Mean L
 
 
 i=0
-while 1   
+while 1
      
     i=i+1 
     
-    a12 = G * m(2) / norm(x(:,1)-x(:,2))^2 * (x(:,2)-x(:,1))/norm(x(:,1)-x(:,2))
-    a13 = G * m(3) / norm(x(:,1)-x(:,3))^2 * (x(:,3)-x(:,1))/norm(x(:,1)-x(:,3))
-    a(:,1) = a12 + a13;
-
-    a21 = G * m(1) / norm(x(:,2)-x(:,1))^2 * (x(:,1)-x(:,2))/norm(x(:,2)-x(:,1))
-    a23 = G * m(3) / norm(x(:,2)-x(:,3))^2 * (x(:,3)-x(:,2))/norm(x(:,2)-x(:,3))
-    a(:,2) = a21 + a23;
-
-    a31 = G * m(1) / norm(x(:,3)-x(:,1))^2 * (x(:,1)-x(:,3))/norm(x(:,3)-x(:,1))
-    a32 = G * m(2) / norm(x(:,3)-x(:,2))^2 * (x(:,2)-x(:,3))/norm(x(:,3)-x(:,2))
-    a(:,3) = a31 + a32;
+    for j=1:number_objects(1)
+        a(:,j) = [0;0]
+        for k=1:number_objects(1)
+            if (k ~= j) then
+                a(:,j) = a(:,j) + G * m(k) / norm(x(:,j)-x(:,k))^2 * (x(:,k)-x(:,j))/norm(x(:,j)-x(:,k))
+            end
+        end
+        v(:,j) = v(:,j) + a(:,j)*dt;
+        x(:,j) = x(:,j) + v(:,j)*dt;
+    end
+    // a = 2*n * n Matrix 
+    //in Spalte j stehen die Beschleunigungen für das Objekt j
+    //in der Doppelzeile a([2*k-1:2*k],j) steht die partielle Beschleunigung von j durch Objekt k
+    //auf der Diagonalen a([2*j-1:2*j],j) steht die Gesamtbeschleunigung von j durch die Summe der partiellen Beschleunigungen
     
-
-    v(:,1) = v(:,1) + a(:,1)*dt;
-    v(:,2) = v(:,2) + a(:,2)*dt;
-    v(:,3) = v(:,3) + a(:,3)*dt;
-
-
-    x(:,1) = x(:,1) + v(:,1)*dt;
-    x(:,2) = x(:,2) + v(:,2)*dt;
-    x(:,3) = x(:,3) + v(:,3)*dt;
+//    v(:,1) = v(:,1) + a(:,1)*dt;
+//    v(:,2) = v(:,2) + a(:,2)*dt;
+//    v(:,3) = v(:,3) + a(:,3)*dt;
+//
+//
+//    x(:,1) = x(:,1) + v(:,1)*dt;
+//    x(:,2) = x(:,2) + v(:,2)*dt;
+//    x(:,3) = x(:,3) + v(:,3)*dt;
 
     r = x(:,2)-x(:,3)
     xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
