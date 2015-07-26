@@ -50,32 +50,32 @@ xfarcs([x(1,2);x(2,2);circsize;circsize*aspectratio;0;360*64],2);r2=gce();r2=r2.
 xfarcs([x(1,3);x(2,3);circsize;circsize*aspectratio;0;360*64],15);r3=gce();r3=r3.children;
 //xstring(x(1,3),x(2,3),"Earth");s3=gce()
 
-xfarcs([xl(1,1);xl(2,1);circsize/2;circsize/2*aspectratio;0;360*64],1);l1=gce();l1=l1.children;
+xfarcs([xl(1,1);xl(2,1);circsize/2;circsize/2*aspectratio;0;360*64],1);l(1)=gce();l(1)=l(1).children;
 xfarcs([xl(1,2);xl(2,2);circsize/2;circsize/2*aspectratio;0;360*64],1);l2=gce();l2=l2.children;
 xfarcs([xl(1,3);xl(2,3);circsize/2;circsize/2*aspectratio;0;360*64],1);l3=gce();l3=l3.children;
 xfarcs([xl(1,4);xl(2,4);circsize/2;circsize/2*aspectratio;0;360*64],1);l4=gce();l4=l4.children;
 xfarcs([xl(1,5);xl(2,5);circsize/2;circsize/2*aspectratio;0;360*64],1);l5=gce();l5=l5.children;
 
-
 xarcs([-circsize*50;circsize*50;circsize*100;circsize*100;0;360*64],7); //Mean Lunar Orbit
 
+
 i=0
-while 1    
+while 1   
+     
     i=i+1 
+    
     a12 = G * m(2) / norm(x(:,1)-x(:,2))^2 * (x(:,2)-x(:,1))/norm(x(:,1)-x(:,2))
     a13 = G * m(3) / norm(x(:,1)-x(:,3))^2 * (x(:,3)-x(:,1))/norm(x(:,1)-x(:,3))
     a(:,1) = a12 + a13;
-
 
     a21 = G * m(1) / norm(x(:,2)-x(:,1))^2 * (x(:,1)-x(:,2))/norm(x(:,2)-x(:,1))
     a23 = G * m(3) / norm(x(:,2)-x(:,3))^2 * (x(:,3)-x(:,2))/norm(x(:,2)-x(:,3))
     a(:,2) = a21 + a23;
 
-
     a31 = G * m(1) / norm(x(:,3)-x(:,1))^2 * (x(:,1)-x(:,3))/norm(x(:,3)-x(:,1))
     a32 = G * m(2) / norm(x(:,3)-x(:,2))^2 * (x(:,2)-x(:,3))/norm(x(:,3)-x(:,2))
     a(:,3) = a31 + a32;
-
+    
 
     v(:,1) = v(:,1) + a(:,1)*dt;
     v(:,2) = v(:,2) + a(:,2)*dt;
@@ -86,17 +86,16 @@ while 1
     x(:,2) = x(:,2) + v(:,2)*dt;
     x(:,3) = x(:,3) + v(:,3)*dt;
 
-    //p2(:,i) = x(:,2)
-    //p3(:,i) = x(:,3)
-
     r = x(:,2)-x(:,3)
     xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
     xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
     xl(:,3) = x(:,3)-r+r*mu*5/12
-    //xl4 = [cosd(60),-sind(60);sind(60),cosd(60)] * (x(:,2) - x(:,3)) + x(:,3)
-    //xl5 = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (x(:,2) - x(:,3)) + x(:,3)
     xl(:,4) = rotate(r,%pi/3,x(:,3))
     xl(:,5) = rotate(r,-%pi/3,x(:,3))
+    
+      
+    
+    //----- Projection ------
     if (r(1) > 0) then
         phi = atan(r(2)/r(1));
     elseif r(1) < 0 then
@@ -106,46 +105,24 @@ while 1
     else
         phi = - %pi/2
     end
-    phi=0
+        
+    offset_object=x(:,2)
 
+    xn1 = rotate(x(:,1)-offset_object,-phi)
+    xn2 = rotate(x(:,2)-offset_object,-phi)
+    xn3 = rotate(x(:,3)-offset_object,-phi)
+    xnl1 = rotate(xl(:,1)-offset_object,-phi)
+    xnl2 = rotate(xl(:,2)-offset_object,-phi)
+    xnl3 = rotate(xl(:,3)-offset_object,-phi)
+    xnl4 = rotate(xl(:,4)-offset_object,-phi)
+    xnl5 = rotate(xl(:,5)-offset_object,-phi)
+p1(:,i) = xn1  
 
     //----- Drawing ------
-
-    //move(r1,v1*dt)
-    //move(s1,v1*dt)
-    //move(r2,v2*dt)
-    //move(s2,v2*dt)
-    //move(r3,v3*dt)
-    //move(s3,v3*dt)
-    //r1.data = [x(1,1);x(2,1);circsize;circsize*aspectratio;0;360*64]
-    //r2.data = [x(1,2);x(2,2);circsize;circsize*aspectratio;0;360*64]
-    //r3.data = [x(1,3);x(2,3);circsize;circsize*aspectratio;0;360*64]
-    //r1.data = [x(1,1);x(2,1);circsize;circsize*aspectratio;0;360*64]
-    //l1.data = [xl1(1);xl1(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    //l2.data = [xl2(1);xl2(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    //l3.data = [xl3(1);xl3(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    //l4.data = [xl4(1);xl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    //l5.data = [xl5(1);xl5(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    alpha=0
-    //alpha = -rotate(xl5,-phi)
-
-    xn1 = rotate(x(:,1),-phi)+alpha
-    xn2 = rotate(x(:,2),-phi)+alpha
-    xn3 = rotate(x(:,3),-phi)+alpha
-    xnl1 = rotate(xl(:,1),-phi)+alpha
-    xnl2 = rotate(xl(:,2),-phi)+alpha
-    xnl3 = rotate(xl(:,3),-phi)+alpha
-    xnl4 = rotate(xl(:,4),-phi)+alpha
-    xnl5 = rotate(xl(:,5),-phi)+alpha
-
-
-    p1(:,i) = xn1
-
-
     r1.data = [xn1(1);xn1(2);circsize;circsize*aspectratio;0;360*64]
     r2.data = [xn2(1);xn2(2);circsize;circsize*aspectratio;0;360*64]
     r3.data = [xn3(1);xn3(2);circsize;circsize*aspectratio;0;360*64]
-    l1.data = [xnl1(1);xnl1(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2*aspectratio;0;360*64]
     l2.data = [xnl2(1);xnl2(2);circsize/2;circsize/2*aspectratio;0;360*64]
     l3.data = [xnl3(1);xnl3(2);circsize/2;circsize/2*aspectratio;0;360*64]
     l4.data = [xnl4(1);xnl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
