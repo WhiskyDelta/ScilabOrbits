@@ -14,23 +14,26 @@ number_objects = size(m);
 
 mean_lunar_orbit=384400000;
 
-x(:,3)=[0;0]
-x(:,2)=[mean_lunar_orbit;0]
-x(:,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (x(:,2) - x(:,3)) + x(:,3)
+state(:,1,3)=[0;0]
+state(:,1,2)=[mean_lunar_orbit;0]
+state(:,1,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (state(:,1,2) - state(:,1,3)) + state(:,1,3)
 
-v(:,2) =[0;1017];
-v(:,3) =[0;-v(2,2)*m(2)/m(3)];
-v(:,1) =[-sind(-60)*v(2,2);cosd(-60)*v(2,2)]; // Nicht die korrekte Orbitgeschwindigkeit
+state(:,2,2) =[0;1077];
+state(:,2,3) =[0;-state(2,2,2)*m(2)/m(3)];
+state(:,2,1) =[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2)]; //not the right orbital velocity
 
-a = zeros(2,number_objects(1))
+for j=1:number_objects(1)
+    state(:,3,j) = [0;0]
+end
+        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
 
 mu = m(2)/(m(2)+m(3))
-r = x(:,2)-x(:,3)
-xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
-xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
-xl(:,3) = x(:,3)-r+r*mu*5/12
-xl(:,4) = rotate(r,%pi/3,x(:,3))
-xl(:,5) = rotate(r,-%pi/3,x(:,3))
+r = state(:,1,2)-state(:,1,3)
+xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3)
+xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3)
+xl(:,3) = state(:,1,3)-r+r*mu*5/12
+xl(:,4) = rotate(r,%pi/3,state(:,1,3))
+xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
 
 
 
@@ -54,7 +57,7 @@ object_scale = 1e-0
 
 for j=1:number_objects(1)
     object_size = m(j)^(1/3)*object_scale
-    xfarcs([x(1,j)-object_size/2;x(2,j)+object_size/2;object_size;object_size;0;360*64],j*5);
+    xfarcs([state(1,1,j)-object_size/2;state(2,1,j)+object_size/2;object_size;object_size;0;360*64],j*5);
     object_handle(j)=gce();
     object_handle(j)=object_handle(j).children;
 end
@@ -77,33 +80,26 @@ while 1
     i=i+1 
 
     //----- Calculation ------
+    state = state * update
     for j=1:number_objects(1)
-        a(:,j) = [0;0]
+        state(:,3,j) = [0;0]
         for k=1:number_objects(1)
             if (k ~= j) then
-                direction = (x(:,k)-x(:,j))/norm(x(:,j)-x(:,k))
-                partial_a = G * m(k) / norm(x(:,j)-x(:,k))^2
-                a(:,j) = a(:,j) + partial_a * direction
+                direction = (state(:,1,k)-state(:,1,j))/norm(state(:,1,j)-state(:,1,k))
+                partial_a = G * m(k) / norm(state(:,1,j)-state(:,1,k))^2
+                state(:,3,j) = state(:,3,j) + partial_a * direction
             end
-        end
-        v(:,j) = v(:,j) + a(:,j)*dt;
-        x(:,j) = x(:,j) + v(:,j)*dt;
-        
-        update=[1,0,0;dt,1,0;.5*dt^2,dt,1]     
-           
-        state(j,1,:) = x(:,j)
-        state(j,2,:) = v(:,j)
-        state(j,3,:) = a(:,j)
-        
+        end        
     end
     
+    
     if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
-        r = x(:,2)-x(:,3)
-        xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
-        xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
-        xl(:,3) = x(:,3)-r+r*mu*5/12
-        xl(:,4) = rotate(r,%pi/3,x(:,3))
-        xl(:,5) = rotate(r,-%pi/3,x(:,3))
+        r = state(:,1,2)-state(:,1,3)
+        xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3)
+        xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3)
+        xl(:,3) = state(:,1,3)-r+r*mu*5/12
+        xl(:,4) = rotate(r,%pi/3,state(:,1,3))
+        xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
     end
 
     //----- Projection ------
@@ -117,13 +113,12 @@ while 1
         phi = - %pi/2
     end
 
-    offset_object=x(:,2)
+//    offset_object=state(:,1,2)
+    offset_object=0
+    phi = 0
 
-//    x_transformed(:,1) = rotate(x(:,1)-offset_object,-phi)
-//    x_transformed(:,2) = rotate(x(:,2)-offset_object,-phi)
-//    x_transformed(:,3) = rotate(x(:,3)-offset_object,-phi)
     for j=1:number_objects(1)
-        x_transformed(:,j) = rotate(x(:,j)-offset_object,-phi)
+        x_transformed(:,j) = rotate(state(:,1,j)-offset_object,-phi)
     end
     
     xnl1 = rotate(xl(:,1)-offset_object,-phi)
@@ -139,7 +134,7 @@ while 1
     p1(:,i) = x_transformed(:,1) 
     p2(:,i) = xnl5
     //----- Drawing ------
-    if i == 500 then
+    if i == 50 then
         
         
     for j=1:number_objects(1)
