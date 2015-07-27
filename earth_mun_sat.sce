@@ -47,11 +47,13 @@ for j=1:number_objects(1)
     object_handle(j)=object_handle(j).children;
 end
 
-xfarcs([xl(1,1);xl(2,1);circsize/2;circsize/2*aspectratio;0;360*64],1);l(1)=gce();l(1)=l(1).children;
-xfarcs([xl(1,2);xl(2,2);circsize/2;circsize/2*aspectratio;0;360*64],1);l2=gce();l2=l2.children;
-xfarcs([xl(1,3);xl(2,3);circsize/2;circsize/2*aspectratio;0;360*64],1);l3=gce();l3=l3.children;
-xfarcs([xl(1,4);xl(2,4);circsize/2;circsize/2*aspectratio;0;360*64],1);l4=gce();l4=l4.children;
-xfarcs([xl(1,5);xl(2,5);circsize/2;circsize/2*aspectratio;0;360*64],1);l5=gce();l5=l5.children;
+objects_with_l_points = [2]
+
+if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
+    for k = 1:5
+        xfarcs([xl(1,k);xl(2,k);circsize/2;circsize/2*aspectratio;0;360*64],1);l(k)=gce();l(k)=l(k).children;
+    end
+end
 
 xarcs([-mean_lunar_orbit;mean_lunar_orbit;mean_lunar_orbit*2;mean_lunar_orbit*2;0;360*64],7); //Mean Lunar Orbit
 
@@ -113,10 +115,10 @@ while 1
 
 
     l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l2.data = [xnl2(1);xnl2(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l3.data = [xnl3(1);xnl3(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l4.data = [xnl4(1);xnl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l5.data = [xnl5(1);xnl5(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(2).data = [xnl2(1);xnl2(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(3).data = [xnl3(1);xnl3(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2*aspectratio;0;360*64]
 
     p1(:,i) = x_transformed(:,1) 
     if i == 500 then
