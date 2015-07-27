@@ -1,5 +1,6 @@
 clear;
 dt= 60*10;
+counter = 0
 
 G =6.67384*10^-11;
 
@@ -7,7 +8,7 @@ G =6.67384*10^-11;
 
 m(3) =5.974*10^24; //Erde
 m(2) =7.349*10^22; //Mond
-m(1) =5e2; //Satellit
+m(1) =5e-20; //Satellit
 
 number_objects = size(m);
 
@@ -80,17 +81,20 @@ while 1
         a(:,j) = [0;0]
         for k=1:number_objects(1)
             if (k ~= j) then
-                a(:,j) = a(:,j) + G * m(k) / norm(x(:,j)-x(:,k))^2 * (x(:,k)-x(:,j))/norm(x(:,j)-x(:,k))
+                direction = (x(:,k)-x(:,j))/norm(x(:,j)-x(:,k))
+                partial_a = G * m(k) / norm(x(:,j)-x(:,k))^2
+                a(:,j) = a(:,j) + partial_a * direction
             end
         end
         v(:,j) = v(:,j) + a(:,j)*dt;
         x(:,j) = x(:,j) + v(:,j)*dt;
         
-//        o(j,:) = [x(1,j),x(2,j),v(1,j),v(2,j),a(1,j),a(2,j)]
-//        o(j,:,:) = [x(:,j)',v(:,j)',a(:,j)']
-        o(j,1,:) = x(:,j)
-        o(j,2,:) = v(:,j)
-        o(j,3,:) = a(:,j)
+        update=[1,0,0;dt,1,0;.5*dt^2,dt,1]     
+           
+        state(j,1,:) = x(:,j)
+        state(j,2,:) = v(:,j)
+        state(j,3,:) = a(:,j)
+        
     end
     
     if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
@@ -115,9 +119,13 @@ while 1
 
     offset_object=x(:,2)
 
-    x_transformed(:,1) = rotate(x(:,1)-offset_object,-phi)
-    x_transformed(:,2) = rotate(x(:,2)-offset_object,-phi)
-    x_transformed(:,3) = rotate(x(:,3)-offset_object,-phi)
+//    x_transformed(:,1) = rotate(x(:,1)-offset_object,-phi)
+//    x_transformed(:,2) = rotate(x(:,2)-offset_object,-phi)
+//    x_transformed(:,3) = rotate(x(:,3)-offset_object,-phi)
+    for j=1:number_objects(1)
+        x_transformed(:,j) = rotate(x(:,j)-offset_object,-phi)
+    end
+    
     xnl1 = rotate(xl(:,1)-offset_object,-phi)
     xnl2 = rotate(xl(:,2)-offset_object,-phi)
     xnl3 = rotate(xl(:,3)-offset_object,-phi)
@@ -125,7 +133,15 @@ while 1
     xnl5 = rotate(xl(:,5)-offset_object,-phi)
 
 
+
+    
+
+    p1(:,i) = x_transformed(:,1) 
+    p2(:,i) = xnl5
     //----- Drawing ------
+    if i == 500 then
+        
+        
     for j=1:number_objects(1)
         object_size = m(j)^(1/3)*object_scale
         object_handle(j).data = [x_transformed(1,j)-object_size/2;x_transformed(2,j)+object_size/2;object_size;object_size;0;360*64]
@@ -138,13 +154,13 @@ while 1
     l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2;0;360*64]
     l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2;0;360*64]
 
-    
 
-    p1(:,i) = x_transformed(:,1) 
-    if i == 50 then
+
         plot(p1(1,:),p1(2,:),"r")
+        plot(p2(1,:),p2(2,:),"b")
+        counter = counter + i
         i=0
         //----- UI Update -----
-        ui_s1.string = string(v(2,1))+" | "+string(v(2,1))
+        ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
     end
 end
