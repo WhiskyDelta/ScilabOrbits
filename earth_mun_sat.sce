@@ -3,6 +3,7 @@ dt= 60*10;
 
 G =6.67384*10^-11;
 
+//----- Object Creation -----
 
 m(3) =5.974*10^24; //Erde
 m(2) =7.349*10^22; //Mond
@@ -30,13 +31,23 @@ xl(:,3) = x(:,3)-r+r*mu*5/12
 xl(:,4) = rotate(r,%pi/3,x(:,3))
 xl(:,5) = rotate(r,-%pi/3,x(:,3))
 
+
+
+
+
+//----- Initial Object Drawing -----
+
 f=gcf();
+
 scale = 3
-axis=gca();axis.data_bounds=[-384400000*scale -384400000*scale; 384400000*scale 384400000*scale];
+
+resolution = [1920;1200]
+
+aspectratio =resolution(1)/resolution(2) // Monitor Aspect Ratio - makes the circles round, even when they should not be
+
+axis=gca();axis.data_bounds=[-384400000*scale*aspectratio -384400000*scale; 384400000*scale*aspectratio 384400000*scale];
 
 circsize = 384400000/50
-
-aspectratio =16/10 // Monitor Aspect Ratio - makes the circles round, even when they should not be
 
 object_scale = 1e-0
 
@@ -51,13 +62,13 @@ objects_with_l_points = [2]
 
 if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
     for k = 1:5
-        xfarcs([xl(1,k);xl(2,k);circsize/2;circsize/2*aspectratio;0;360*64],1);l(k)=gce();l(k)=l(k).children;
+        xfarcs([xl(1,k);xl(2,k);circsize/2;circsize/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
     end
 end
 
 xarcs([-mean_lunar_orbit;mean_lunar_orbit;mean_lunar_orbit*2;mean_lunar_orbit*2;0;360*64],7); //Mean Lunar Orbit
 
-
+ui_s1 = uicontrol('style','text','string','String 1','position',[resolution(1)-200,resolution(2)-250,200,100])
 
 i=0
 while 1
@@ -74,15 +85,22 @@ while 1
         end
         v(:,j) = v(:,j) + a(:,j)*dt;
         x(:,j) = x(:,j) + v(:,j)*dt;
+        
+//        o(j,:) = [x(1,j),x(2,j),v(1,j),v(2,j),a(1,j),a(2,j)]
+//        o(j,:,:) = [x(:,j)',v(:,j)',a(:,j)']
+        o(j,1,:) = x(:,j)
+        o(j,2,:) = v(:,j)
+        o(j,3,:) = a(:,j)
     end
-
-    r = x(:,2)-x(:,3)
-    xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
-    xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
-    xl(:,3) = x(:,3)-r+r*mu*5/12
-    xl(:,4) = rotate(r,%pi/3,x(:,3))
-    xl(:,5) = rotate(r,-%pi/3,x(:,3))
-
+    
+    if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
+        r = x(:,2)-x(:,3)
+        xl(:,1) = x(:,3)+r-r*(mu/3)^(1/3)
+        xl(:,2) = x(:,3)+r+r*(mu/3)^(1/3)
+        xl(:,3) = x(:,3)-r+r*mu*5/12
+        xl(:,4) = rotate(r,%pi/3,x(:,3))
+        xl(:,5) = rotate(r,-%pi/3,x(:,3))
+    end
 
     //----- Projection ------
     if (r(1) > 0) then
@@ -114,15 +132,19 @@ while 1
     end
 
 
-    l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l(2).data = [xnl2(1);xnl2(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l(3).data = [xnl3(1);xnl3(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2*aspectratio;0;360*64]
-    l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2*aspectratio;0;360*64]
+    l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2;0;360*64]
+    l(2).data = [xnl2(1);xnl2(2);circsize/2;circsize/2;0;360*64]
+    l(3).data = [xnl3(1);xnl3(2);circsize/2;circsize/2;0;360*64]
+    l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2;0;360*64]
+    l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2;0;360*64]
+
+    
 
     p1(:,i) = x_transformed(:,1) 
-    if i == 500 then
+    if i == 50 then
         plot(p1(1,:),p1(2,:),"r")
         i=0
+        //----- UI Update -----
+        ui_s1.string = string(v(2,1))+" | "+string(v(2,1))
     end
 end
