@@ -54,7 +54,7 @@ l_size = 384400000/50
 objects_with_l_points = [2]
 tracked_objects=[1]
 
-draw_data = list(id,resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,objects_with_l_points,tracked_objects)
+draw_data = list(id,state,m,resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,objects_with_l_points,tracked_objects)
 
 //figure_handle(1) = init_orbits_draw(draw_data)
 
