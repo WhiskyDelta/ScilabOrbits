@@ -43,17 +43,20 @@ xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
 
 //----- Initial Object Drawing -----
 
-axis_scale = 3
+id = 1
 resolution = [1920;1200]
 aspectratio =resolution(1)/resolution(2) 
-l_size = 384400000/50
+axis_scale = 3
 object_scale = 1e0
-objects_with_l_points = [2]
 offset_object=0
 rotation_object=0
+l_size = 384400000/50
+objects_with_l_points = [2]
 tracked_objects=[1]
 
-draw_data = list(resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,tracked_objects)
+draw_data = list(id,resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,objects_with_l_points,tracked_objects)
+
+//figure_handle(1) = init_orbits_draw(draw_data)
 
 f=figure('figure_id',1,'Userdata',draw_data);
 
@@ -83,6 +86,9 @@ while 1
     i=i+1 
 
     //----- Calculation ------
+    
+    //TODO: Call runge_kutta from here and make it work
+    
     state = state * update
     for j=1:number_objects(1)
         state(:,3,j) = [0;0]
@@ -111,7 +117,7 @@ while 1
 
     //----- Drawing ------
     
-    status=orbits_draw(f,state)
+//    status=orbits_draw(f,state)
 
     //----- Transformation ------
 
