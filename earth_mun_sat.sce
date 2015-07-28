@@ -1,6 +1,6 @@
 clear;
 dt= 60*10;
-counter = 0
+iteration_counter = 0
 
 G =6.67384*10^-11;
 
@@ -18,14 +18,14 @@ state(:,1,3)=[0;0]
 state(:,1,2)=[mean_lunar_orbit;0]
 state(:,1,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (state(:,1,2) - state(:,1,3)) + state(:,1,3)
 
-state(:,2,2) =[0;1077];
+state(:,2,2) =[0;1017];
 state(:,2,3) =[0;-state(2,2,2)*m(2)/m(3)];
 state(:,2,1) =[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2)]; //not the right orbital velocity
 
 for j=1:number_objects(1)
     state(:,3,j) = [0;0]
 end
-        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
+update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
 
 mu = m(2)/(m(2)+m(3))
 r = state(:,1,2)-state(:,1,3)
@@ -37,23 +37,23 @@ xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
 
 
 
-
-
 //----- Initial Object Drawing -----
 
-f=gcf();
-
-scale = 3
-
+axis_scale = 3
 resolution = [1920;1200]
+aspectratio =resolution(1)/resolution(2) 
+l_size = 384400000/50
+object_scale = 1e0
+objects_with_l_points = [2]
+offset_object=0
+rotation_object=0
+tracked_objects=[1]
 
-aspectratio =resolution(1)/resolution(2) // Monitor Aspect Ratio - makes the circles round, even when they should not be
+draw_data = list(resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,tracked_objects)
 
-axis=gca();axis.data_bounds=[-384400000*scale*aspectratio -384400000*scale; 384400000*scale*aspectratio 384400000*scale];
+f=figure('figure_id',1,'Userdata',draw_data);
 
-circsize = 384400000/50
-
-object_scale = 1e-0
+axis=gca();axis.data_bounds=[-384400000*axis_scale*aspectratio -384400000*axis_scale; 384400000*axis_scale*aspectratio 384400000*axis_scale];
 
 for j=1:number_objects(1)
     object_size = m(j)^(1/3)*object_scale
@@ -62,11 +62,10 @@ for j=1:number_objects(1)
     object_handle(j)=object_handle(j).children;
 end
 
-objects_with_l_points = [2]
 
 if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
     for k = 1:5
-        xfarcs([xl(1,k);xl(2,k);circsize/2;circsize/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
+        xfarcs([xl(1,k);xl(2,k);l_size/2;l_size/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
     end
 end
 
@@ -91,9 +90,11 @@ while 1
             end
         end        
     end
-    
-    
-    if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
+
+
+    //doesn't yet support multiple objects with lagrangian points
+    //probably should be done with transformed states
+    if find(objects_with_l_points==2) then 
         r = state(:,1,2)-state(:,1,3)
         xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3)
         xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3)
@@ -102,60 +103,76 @@ while 1
         xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
     end
 
-    //----- Projection ------
-    if (r(1) > 0) then
-        phi = atan(r(2)/r(1));
-    elseif r(1) < 0 then
-        phi = %pi+atan(r(2)/r(1));
-    elseif r(2) > 0 then
-        phi = %pi/2;
+    iteration_counter = iteration_counter + 1
+
+    //----- Drawing ------
+    
+    //    status=orbits_draw(f,state)
+
+
+// No idea why orbits_draw cannot be called
+
+//status=orbits_draw(f,state)
+//                             !--error 4 
+//Undefinierte Variable: orbits_draw
+//at line     121 of exec file called by :    
+//arth_mun_sat.sce', -1
+
+    //----- Transformation ------
+
+    if offset_object ~= 0 then
+
+        if rotation_object ~= 0 then
+
+            xi_axis = state(:,1,rotation_object)-state(:,1,offset_object)
+            if (xi_axis(1) > 0) then
+                phi = atan(xi_axis(2)/xi_axis(1));
+            elseif xi_axis(1) < 0 then
+                phi = %pi+atan(xi_axis(2)/xi_axis(1));
+            elseif xi_axis(2) > 0 then
+                phi = %pi/2;
+            else
+                phi = - %pi/2
+            end
+        else
+            phi = 0
+        end
+
+        for j=1:number_objects(1)
+            transformed_state(:,j) = rotate(state(:,1,j)-state(:,1,offset_object),-phi)
+        end
+
+        xl(:,1) = rotate(xl(:,1)-state(:,1,offset_object),-phi)
+        xl(:,2) = rotate(xl(:,2)-state(:,1,offset_object),-phi)
+        xl(:,3) = rotate(xl(:,3)-state(:,1,offset_object),-phi)
+        xl(:,4) = rotate(xl(:,4)-state(:,1,offset_object),-phi)
+        xl(:,5) = rotate(xl(:,5)-state(:,1,offset_object),-phi)
     else
-        phi = - %pi/2
+        transformed_state = matrix(state(:,1,:),2,number_objects(1))
     end
 
-//    offset_object=state(:,1,2)
-    offset_object=0
-    phi = 0
-
-    for j=1:number_objects(1)
-        x_transformed(:,j) = rotate(state(:,1,j)-offset_object,-phi)
-    end
-    
-    xnl1 = rotate(xl(:,1)-offset_object,-phi)
-    xnl2 = rotate(xl(:,2)-offset_object,-phi)
-    xnl3 = rotate(xl(:,3)-offset_object,-phi)
-    xnl4 = rotate(xl(:,4)-offset_object,-phi)
-    xnl5 = rotate(xl(:,5)-offset_object,-phi)
-
-
-
-    
-
-    p1(:,i) = x_transformed(:,1) 
-    p2(:,i) = xnl5
+    tracker1(:,i,1) = transformed_state(:,tracked_objects) 
     //----- Drawing ------
     if i == 50 then
-        
-        
-    for j=1:number_objects(1)
-        object_size = m(j)^(1/3)*object_scale
-        object_handle(j).data = [x_transformed(1,j)-object_size/2;x_transformed(2,j)+object_size/2;object_size;object_size;0;360*64]
-    end
+
+        for j=1:number_objects(1)
+            object_size = m(j)^(1/3)*object_scale
+            object_handle(j).data = [transformed_state(1,j)-object_size/2;transformed_state(2,j)+object_size/2;object_size;object_size;0;360*64]
+        end
 
 
-    l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2;0;360*64]
-    l(2).data = [xnl2(1);xnl2(2);circsize/2;circsize/2;0;360*64]
-    l(3).data = [xnl3(1);xnl3(2);circsize/2;circsize/2;0;360*64]
-    l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2;0;360*64]
-    l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2;0;360*64]
+        l(1).data = [xl(1,1);xl(2,1);l_size/2;l_size/2;0;360*64]
+        l(2).data = [xl(1,2);xl(2,2);l_size/2;l_size/2;0;360*64]
+        l(3).data = [xl(1,3);xl(2,3);l_size/2;l_size/2;0;360*64]
+        l(4).data = [xl(1,4);xl(2,4);l_size/2;l_size/2;0;360*64]
+        l(5).data = [xl(1,5);xl(2,5);l_size/2;l_size/2;0;360*64]
 
 
+        plot(tracker1(1,:,1),tracker1(2,:,1),"r")
 
-        plot(p1(1,:),p1(2,:),"r")
-        plot(p2(1,:),p2(2,:),"b")
-        counter = counter + i
         i=0
         //----- UI Update -----
-        ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
+        ui_s1.string = string(iteration_counter)+" | "+string(iteration_counter*dt/60/60/24)
     end
+
 end
