@@ -1,5 +1,5 @@
 This programm for Scilab is meant to numericaly compute the orbits of multiple bodys.
-By now it simulates Earth, Moon and a satellite which starts in a lagrangian point it does its weird orbit around it.
+By now it simulates Earth, Moon and a satellite which starts in a lagrangian point and does its weird orbit around it.
 
 Some stuff that may be interesting to read:
 
