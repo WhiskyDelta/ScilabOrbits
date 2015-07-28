@@ -1,4 +1,8 @@
 clear;
+
+exec('drawing.sci');
+exec('runge_kutta.sce');
+
 dt= 60*10;
 iteration_counter = 0
 
@@ -107,16 +111,7 @@ while 1
 
     //----- Drawing ------
     
-    //    status=orbits_draw(f,state)
-
-
-// No idea why orbits_draw cannot be called
-
-//status=orbits_draw(f,state)
-//                             !--error 4 
-//Undefinierte Variable: orbits_draw
-//at line     121 of exec file called by :    
-//arth_mun_sat.sce', -1
+    status=orbits_draw(f,state)
 
     //----- Transformation ------
 

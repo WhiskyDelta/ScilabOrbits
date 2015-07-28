@@ -12,3 +12,5 @@ function [y1]=runge_kutta(butcher,fct,y0,t0,stepsize)
         y1 = y1 + stepsize*butcher(rksteps+1,i+1)*fct(t0+butcher(i,1)*stepsize,g(i,:,:,:))
     end
 endfunction
+
+disp("runge_kutta.sce loaded")
