@@ -1,4 +1,23 @@
 clear;
+exec("rotateAroundPivot.sci");
+exec("rotateAroundAxis.sci");
+exec("adamsBashforth.sci");
+function dydt=dgl(y)
+    dydt = list()
+    for j=1:size(y)
+        dydt(j)=zeros(2,3);
+        dydt(j)(1,:)=y(j)(2,:);
+        dydt(j)(2,:) = [0,0,0];
+        for k=1:number_objects(1);
+            if (k ~= j) then
+                direction = (y(k)(1,:)-y(j)(1,:))/norm(y(k)(1,:)-y(j)(1,:))
+                partial_a = G * m(k) / norm(y(k)(1,:)-y(j)(1,:))^2
+                dydt(j)(2,:) = dydt(j)(2,:) + partial_a * direction
+            end
+        end        
+    end
+endfunction
+
 dt= 60*10;
 counter = 0
 
@@ -16,16 +35,18 @@ mean_lunar_orbit=384400000;
 
 x0earth=[0,0,0];
 x0moon=[mean_lunar_orbit,0,0];
-x0sat=[cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,0] * (x0moon - x0earth) + x0earth;
+x0sat=([cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,0] * (x0moon - x0earth)')' + x0earth;
 
 v0moon=[0,1077,0];
-v0sat=[-sind(-60)*v0moon(2);cosd(-60)*v0moon(2)];
-v0earth=[0,0,0];
+v0sat=[-sind(-60)*v0moon(2),cosd(-60)*v0moon(2),0];
+v0earth=[0,-v0moon(2)*m(2)/m(3),0];
 
-status = list();
-status(1)=[x0sat,v0sat];
-status(2)=[x0moon,v0moon];
-status(3)=[x0earth,v0earth];
+state = list();
+statedot = list();
+state(1)=[x0sat;v0sat];
+state(2)=[x0moon;v0moon];
+state(3)=[x0earth;v0earth];
+statesN = list(state)
 
 //state(:,1,3)=[0;0]
 //state(:,1,2)=[mean_lunar_orbit;0]
@@ -40,13 +61,14 @@ status(3)=[x0earth,v0earth];
 //end
 //        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
 
+lpoint = list()
 mu = m(2)/(m(2)+m(3))
-r = state(:,1,2)-state(:,1,3)
-xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3)
-xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3)
-xl(:,3) = state(:,1,3)-r+r*mu*5/12
-xl(:,4) = rotate(r,%pi/3,state(:,1,3))
-xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
+r = (state(2)(1,:)-state(3)(1,:))
+lpoint(1) = state(3)(1,:)+r-r*(mu/3)^(1/3)
+lpoint(2) = state(3)(1,:)+r+r*(mu/3)^(1/3)
+lpoint(3) = state(3)(1,:)-r+r*mu*5/12
+lpoint(4) = rotateAroundPivot(r,%pi/3,0,0,state(3)(1,:))
+lpoint(5) = rotateAroundPivot(r,-%pi/3,0,0,state(3)(1,:))
 
 
 
@@ -70,7 +92,7 @@ object_scale = 1e-0
 
 for j=1:number_objects(1)
     object_size = m(j)^(1/3)*object_scale
-    xfarcs([state(1,1,j)-object_size/2;state(2,1,j)+object_size/2;object_size;object_size;0;360*64],j*5);
+    xfarcs([state(j)(1,1)-object_size/2;state(j)(1,2)+object_size/2;object_size;object_size;0;360*64],j*5);
     object_handle(j)=gce();
     object_handle(j)=object_handle(j).children;
 end
@@ -79,7 +101,7 @@ objects_with_l_points = [2]
 
 if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
     for k = 1:5
-        xfarcs([xl(1,k);xl(2,k);circsize/2;circsize/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
+        xfarcs([lpoint(k)(1);lpoint(k)(2);circsize/2;circsize/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
     end
 end
 
@@ -105,18 +127,21 @@ while 1
 //        end        
 //    end
     
-    for j=1:number_objects(1)
-        status(j)=dt*dgl(status(j))
-    end
-    
-    
+//    state_dot=dgl(state,m);
+//    for j = 1:size(state)
+//        state(j)=state(j)+state_dot(j)*dt;
+//    end
+
+    statesN = adamsBashforth(4,statesN,dgl,dt)
+    state=statesN(1)
+
     if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
-        r = state(:,1,2)-state(:,1,3)
-        xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3)
-        xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3)
-        xl(:,3) = state(:,1,3)-r+r*mu*5/12
-        xl(:,4) = rotate(r,%pi/3,state(:,1,3))
-        xl(:,5) = rotate(r,-%pi/3,state(:,1,3))
+        r = state(2)(1,:)-state(3)(1,:)
+        lpoint(1) = state(3)(1,:)+r-r*(mu/3)^(1/3)
+        lpoint(2) = state(3)(1,:)+r+r*(mu/3)^(1/3)
+        lpoint(3) = state(3)(1,:)-r+r*mu*5/12
+        lpoint(4) = rotateAroundPivot(r,%pi/3,0,0,state(3)(1,:))
+        lpoint(5) = rotateAroundPivot(r,-%pi/3,0,0,state(3)(1,:))
     end
 
     //----- Projection ------
@@ -130,19 +155,19 @@ while 1
         phi = - %pi/2
     end
 
-//    offset_object=state(:,1,2)
+//    offset_object=state(2)(1,:)
     offset_object=0
     phi = 0
 
     for j=1:number_objects(1)
-        x_transformed(:,j) = rotate(state(:,1,j)-offset_object,-phi)
+        x_transformed(:,j) = rotateAroundPivot(state(j)(1,:),-phi,0,0,-offset_object)'
     end
     
-    xnl1 = rotate(xl(:,1)-offset_object,-phi)
-    xnl2 = rotate(xl(:,2)-offset_object,-phi)
-    xnl3 = rotate(xl(:,3)-offset_object,-phi)
-    xnl4 = rotate(xl(:,4)-offset_object,-phi)
-    xnl5 = rotate(xl(:,5)-offset_object,-phi)
+    xnl1 = rotate(lpoint(1)(1:2)'-offset_object,-phi)
+    xnl2 = rotate(lpoint(2)(1:2)'-offset_object,-phi)
+    xnl3 = rotate(lpoint(3)(1:2)'-offset_object,-phi)
+    xnl4 = rotate(lpoint(4)(1:2)'-offset_object,-phi)
+    xnl5 = rotate(lpoint(5)(1:2)'-offset_object,-phi)
 
 
 
@@ -151,7 +176,7 @@ while 1
     p1(:,i) = x_transformed(:,1) 
     p2(:,i) = xnl5
     //----- Drawing ------
-    if i == 50 then
+    if i == 300 then
         
         
     for j=1:number_objects(1)
@@ -176,17 +201,3 @@ while 1
         ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
     end
 end
-
-function dydt=dgl(y)
-    dydt(1,:) = y(:,2)
-    for j=1:number_objects(1)
-        dydt(:,2,j) = [0;0]
-        for k=1:number_objects(1)
-            if (k ~= j) then
-                direction = (y(:,1,k)-y(:,1,j))/norm(y(:,1,k)-y(:,1,j))
-                partial_a = G * m(k) / norm(y(:,1,j)-y(:,1,k))^2
-                dydt(:,2,j) = dydt(:,2,j) + partial_a * direction
-            end
-        end        
-    end
-endfunction
