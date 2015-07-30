@@ -14,18 +14,31 @@ number_objects = size(m);
 
 mean_lunar_orbit=384400000;
 
-state(:,1,3)=[0;0]
-state(:,1,2)=[mean_lunar_orbit;0]
-state(:,1,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (state(:,1,2) - state(:,1,3)) + state(:,1,3)
+x0earth=[0,0,0];
+x0moon=[mean_lunar_orbit,0,0];
+x0sat=[cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,0] * (x0moon - x0earth) + x0earth;
 
-state(:,2,2) =[0;1077];
-state(:,2,3) =[0;-state(2,2,2)*m(2)/m(3)];
-state(:,2,1) =[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2)]; //not the right orbital velocity
+v0moon=[0,1077,0];
+v0sat=[-sind(-60)*v0moon(2);cosd(-60)*v0moon(2)];
+v0earth=[0,0,0];
 
-for j=1:number_objects(1)
-    state(:,3,j) = [0;0]
-end
-        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
+status = list();
+status(1)=[x0sat,v0sat];
+status(2)=[x0moon,v0moon];
+status(3)=[x0earth,v0earth];
+
+//state(:,1,3)=[0;0]
+//state(:,1,2)=[mean_lunar_orbit;0]
+//state(:,1,1) = [cosd(-60),-sind(-60);sind(-60),cosd(-60)] * (state(:,1,2) - state(:,1,3)) + state(:,1,3)
+//
+//state(:,2,2) =[0;1077];
+//state(:,2,3) =[0;-state(2,2,2)*m(2)/m(3)];
+//state(:,2,1) =[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2)]; //not the right orbital velocity
+//
+//for j=1:number_objects(1)
+//    state(:,3,j) = [0;0]
+//end
+//        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
 
 mu = m(2)/(m(2)+m(3))
 r = state(:,1,2)-state(:,1,3)
@@ -80,16 +93,20 @@ while 1
     i=i+1 
 
     //----- Calculation ------
-    state = state * update
+//    state = state * update
+//    for j=1:number_objects(1)
+//        state(:,3,j) = [0;0]
+//        for k=1:number_objects(1)
+//            if (k ~= j) then
+//                direction = (state(:,1,k)-state(:,1,j))/norm(state(:,1,j)-state(:,1,k))
+//                partial_a = G * m(k) / norm(state(:,1,j)-state(:,1,k))^2
+//                state(:,3,j) = state(:,3,j) + partial_a * direction
+//            end
+//        end        
+//    end
+    
     for j=1:number_objects(1)
-        state(:,3,j) = [0;0]
-        for k=1:number_objects(1)
-            if (k ~= j) then
-                direction = (state(:,1,k)-state(:,1,j))/norm(state(:,1,j)-state(:,1,k))
-                partial_a = G * m(k) / norm(state(:,1,j)-state(:,1,k))^2
-                state(:,3,j) = state(:,3,j) + partial_a * direction
-            end
-        end        
+        status(j)=dt*dgl(status(j))
     end
     
     
@@ -159,3 +176,17 @@ while 1
         ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
     end
 end
+
+function dydt=dgl(y)
+    dydt(1,:) = y(:,2)
+    for j=1:number_objects(1)
+        dydt(:,2,j) = [0;0]
+        for k=1:number_objects(1)
+            if (k ~= j) then
+                direction = (y(:,1,k)-y(:,1,j))/norm(y(:,1,k)-y(:,1,j))
+                partial_a = G * m(k) / norm(y(:,1,j)-y(:,1,k))^2
+                dydt(:,2,j) = dydt(:,2,j) + partial_a * direction
+            end
+        end        
+    end
+endfunction
