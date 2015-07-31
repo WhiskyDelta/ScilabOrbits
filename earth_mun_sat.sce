@@ -18,7 +18,7 @@ function dydt=dgl(y)
     end
 endfunction
 
-dt= 60*10;
+dt= 60*30;
 counter = 0
 
 G =6.67384*10^-11;
@@ -37,7 +37,7 @@ x0earth=[0,0,0];
 x0moon=[mean_lunar_orbit,0,0];
 x0sat=([cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,0] * (x0moon - x0earth)')' + x0earth;
 
-v0moon=[0,1077,0];
+v0moon=[0,1023,0];
 v0sat=[-sind(-60)*v0moon(2),cosd(-60)*v0moon(2),0];
 v0earth=[0,-v0moon(2)*m(2)/m(3),0];
 
@@ -108,10 +108,10 @@ end
 xarcs([-mean_lunar_orbit;mean_lunar_orbit;mean_lunar_orbit*2;mean_lunar_orbit*2;0;360*64],7); //Mean Lunar Orbit
 
 ui_s1 = uicontrol('style','text','string','String 1','position',[resolution(1)-200,resolution(2)-250,200,100])
-
+time=[0,0,0,0]
 i=0
 while 1
-
+    timer()
     i=i+1 
 
     //----- Calculation ------
@@ -127,13 +127,15 @@ while 1
 //        end        
 //    end
     
-//    state_dot=dgl(state,m);
+//    state_dot=dgl(state);
 //    for j = 1:size(state)
 //        state(j)=state(j)+state_dot(j)*dt;
 //    end
 
     statesN = adamsBashforth(4,statesN,dgl,dt)
     state=statesN(1)
+
+    time(1) = time(1)+timer()
 
     if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
         r = state(2)(1,:)-state(3)(1,:)
@@ -143,7 +145,8 @@ while 1
         lpoint(4) = rotateAroundPivot(r,%pi/3,0,0,state(3)(1,:))
         lpoint(5) = rotateAroundPivot(r,-%pi/3,0,0,state(3)(1,:))
     end
-
+    time(2) = time(2)+timer()
+    
     //----- Projection ------
     if (r(1) > 0) then
         phi = atan(r(2)/r(1));
@@ -155,21 +158,21 @@ while 1
         phi = - %pi/2
     end
 
-//    offset_object=state(2)(1,:)
-    offset_object=0
-    phi = 0
+    offset_object=state(2)(1,:)
+//    offset_object=0
+//    phi = 0
 
     for j=1:number_objects(1)
         x_transformed(:,j) = rotateAroundPivot(state(j)(1,:),-phi,0,0,-offset_object)'
     end
     
-    xnl1 = rotate(lpoint(1)(1:2)'-offset_object,-phi)
-    xnl2 = rotate(lpoint(2)(1:2)'-offset_object,-phi)
-    xnl3 = rotate(lpoint(3)(1:2)'-offset_object,-phi)
-    xnl4 = rotate(lpoint(4)(1:2)'-offset_object,-phi)
-    xnl5 = rotate(lpoint(5)(1:2)'-offset_object,-phi)
+    xnl1 = rotate(lpoint(1)(1:2)'-offset_object(1:2)',-phi)
+    xnl2 = rotate(lpoint(2)(1:2)'-offset_object(1:2)',-phi)
+    xnl3 = rotate(lpoint(3)(1:2)'-offset_object(1:2)',-phi)
+    xnl4 = rotate(lpoint(4)(1:2)'-offset_object(1:2)',-phi)
+    xnl5 = rotate(lpoint(5)(1:2)'-offset_object(1:2)',-phi)
 
-
+    time(3) = time(3)+timer()
 
     
 
@@ -200,4 +203,6 @@ while 1
         //----- UI Update -----
         ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
     end
+    time(4) = time(4)+timer()
+    disp(time)
 end
