@@ -1,25 +1,26 @@
 clear;
-exec("rotateAroundPivot.sci");
-exec("rotateAroundAxis.sci");
-exec("adamsBashforth.sci");
-function dydt=dgl(y)
+
+chdir(get_absolute_file_path('earth_mun_sat.sce'));
+getd();
+
+function dydt = dgl(y)
     dydt = list()
-    for j=1:size(y)
-        dydt(j)=zeros(2,3);
-        dydt(j)(1,:)=y(j)(2,:);
-        dydt(j)(2,:) = [0,0,0];
-        for k=1:number_objects(1);
-            if (k ~= j) then
-                direction = (y(k)(1,:)-y(j)(1,:))/norm(y(k)(1,:)-y(j)(1,:))
-                partial_a = G * m(k) / norm(y(k)(1,:)-y(j)(1,:))^2
-                dydt(j)(2,:) = dydt(j)(2,:) + partial_a * direction
-            end
-        end        
-    end
+    iteration_counter = 0;
+    dydt(j)=zeros(2,3);
+    dydt(j)(1,:)=y(j)(2,:);
+    dydt(j)(2,:) = [0,0,0];
+    for k=1:number_objects(1);
+        if (k ~= j) then
+            direction = (y(k)(1,:)-y(j)(1,:))/norm(y(k)(1,:)-y(j)(1,:))
+            partial_a = G * m(k) / norm(y(k)(1,:)-y(j)(1,:))^2
+            dydt(j)(2,:) = dydt(j)(2,:) + partial_a * direction
+        end
+    end        
 endfunction
 
+iteration_counter=0
+
 dt= 60*30;
-counter = 0
 
 G =6.67384*10^-11;
 
@@ -33,19 +34,20 @@ number_objects = size(m);
 
 mean_lunar_orbit=384400000;
 
-x0earth=[0,0,0];
-x0moon=[mean_lunar_orbit,0,0];
-x0sat=([cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,0] * (x0moon - x0earth)')' + x0earth;
+state(:,1,3)=[0;0;0];
+state(:,1,2)=[mean_lunar_orbit;0;0];
+state(:,1,1) = [cosd(-60),-sind(-60),0;sind(-60),cosd(-60),0;0,0,1] * (state(:,1,2) - state(:,1,3)) + state(:,1,3);
 
-v0moon=[0,1023,0];
-v0sat=[-sind(-60)*v0moon(2),cosd(-60)*v0moon(2),0];
-v0earth=[0,-v0moon(2)*m(2)/m(3),0];
+state(:,2,2) =[0;1017;0];
+state(:,2,1)=[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2);0];
+state(:,2,3)=[0;-state(2,2,2)*m(2)/m(3);0];
 
-state = list();
-statedot = list();
-state(1)=[x0sat;v0sat];
-state(2)=[x0moon;v0moon];
-state(3)=[x0earth;v0earth];
+for j = 1:number_objects(1)
+    state(:,3,j) = [0;0;0];
+end    
+
+update=[1,0,0;dt,1,0;1*dt^2,dt,1]; //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
+
 statesN = list(state)
 
 //state(:,1,3)=[0;0]
@@ -60,149 +62,158 @@ statesN = list(state)
 //    state(:,3,j) = [0;0]
 //end
 //        update=[1,0,0;dt,1,0;1*dt^2,dt,1] //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
-
 lpoint = list()
-mu = m(2)/(m(2)+m(3))
-r = (state(2)(1,:)-state(3)(1,:))
-lpoint(1) = state(3)(1,:)+r-r*(mu/3)^(1/3)
-lpoint(2) = state(3)(1,:)+r+r*(mu/3)^(1/3)
-lpoint(3) = state(3)(1,:)-r+r*mu*5/12
-lpoint(4) = rotateAroundPivot(r,%pi/3,0,0,state(3)(1,:))
-lpoint(5) = rotateAroundPivot(r,-%pi/3,0,0,state(3)(1,:))
 
-
+mu = m(2)/(m(2)+m(3));
+r = state(:,1,2)-state(:,1,3);
+xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3);
+xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3);
+xl(:,3) = state(:,1,3)-r+r*mu*5/12;
+xl(:,4) = rotateAroundPivot(r,%pi/3,0,0,state(:,1,3));
+xl(:,5) = rotateAroundPivot(r,-%pi/3,0,0,state(:,1,3));
 
 
 
 //----- Initial Object Drawing -----
 
-f=gcf();
+id = 1;
+resolution = [1920;1200];
+aspectratio =resolution(1)/resolution(2);
+axis_scale = 3;
+object_scale = 1e0;
+offset_object=0;
+rotation_object=0;
+l_size = 384400000/50;
+objects_with_l_points = [2];
+tracked_objects=[1];
 
-scale = 3
+draw_data = list(id,state,m,resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,objects_with_l_points,tracked_objects);
 
-resolution = [1920;1200]
+//figure_handle(1) = init_orbits_draw(draw_data)
 
-aspectratio =resolution(1)/resolution(2) // Monitor Aspect Ratio - makes the circles round, even when they should not be
+f=figure('figure_id',1,'Userdata',draw_data);
 
-axis=gca();axis.data_bounds=[-384400000*scale*aspectratio -384400000*scale; 384400000*scale*aspectratio 384400000*scale];
-
-circsize = 384400000/50
-
-object_scale = 1e-0
+axis=gca();axis.data_bounds=[-384400000*axis_scale*aspectratio -384400000*axis_scale; 384400000*axis_scale*aspectratio 384400000*axis_scale];
 
 for j=1:number_objects(1)
-    object_size = m(j)^(1/3)*object_scale
-    xfarcs([state(j)(1,1)-object_size/2;state(j)(1,2)+object_size/2;object_size;object_size;0;360*64],j*5);
+    object_size = m(j)^(1/3)*object_scale;
+    xfarcs([state(1,1,j)-object_size/2;state(2,1,j)+object_size/2;object_size;object_size;0;360*64],j*5);
     object_handle(j)=gce();
     object_handle(j)=object_handle(j).children;
 end
 
-objects_with_l_points = [2]
 
 if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
     for k = 1:5
-        xfarcs([lpoint(k)(1);lpoint(k)(2);circsize/2;circsize/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
+        xfarcs([xl(1,k);xl(2,k);l_size/2;l_size/2;0;360*64],1);l(k)=gce();l(k)=l(k).children;
     end
 end
 
 xarcs([-mean_lunar_orbit;mean_lunar_orbit;mean_lunar_orbit*2;mean_lunar_orbit*2;0;360*64],7); //Mean Lunar Orbit
 
-ui_s1 = uicontrol('style','text','string','String 1','position',[resolution(1)-200,resolution(2)-250,200,100])
+ui_s1 = uicontrol('style','text','string','String 1','position',[resolution(1)-200,resolution(2)-250,200,100]);
 time=[0,0,0,0]
-i=0
+i=0;
 while 1
     timer()
-    i=i+1 
+    i=i+1;
 
     //----- Calculation ------
-//    state = state * update
-//    for j=1:number_objects(1)
-//        state(:,3,j) = [0;0]
-//        for k=1:number_objects(1)
+    
+    //TODO: Call runge_kutta from here and make it work
+    
+//    state = state * update;
 //            if (k ~= j) then
-//                direction = (state(:,1,k)-state(:,1,j))/norm(state(:,1,j)-state(:,1,k))
+//        state(:,3,j) = [0;0;0];
 //                partial_a = G * m(k) / norm(state(:,1,j)-state(:,1,k))^2
 //                state(:,3,j) = state(:,3,j) + partial_a * direction
-//            end
-//        end        
-//    end
+//                direction = (state(:,1,k)-state(:,1,j))/norm(state(:,1,j)-state(:,1,k));
+//                partial_a = G * m(k) / norm(state(:,1,j)-state(:,1,k))^2;
+//                state(:,3,j) = state(:,3,j) + partial_a * direction;
     
 //    state_dot=dgl(state);
 //    for j = 1:size(state)
 //        state(j)=state(j)+state_dot(j)*dt;
 //    end
 
-    statesN = adamsBashforth(4,statesN,dgl,dt)
+//    statesN = adamsBashforth(4,statesN,dgl,dt)
     state=statesN(1)
 
     time(1) = time(1)+timer()
 
-    if find(objects_with_l_points==2) then //doesn't yet support multiple objects with lagrangian points
-        r = state(2)(1,:)-state(3)(1,:)
-        lpoint(1) = state(3)(1,:)+r-r*(mu/3)^(1/3)
-        lpoint(2) = state(3)(1,:)+r+r*(mu/3)^(1/3)
-        lpoint(3) = state(3)(1,:)-r+r*mu*5/12
-        lpoint(4) = rotateAroundPivot(r,%pi/3,0,0,state(3)(1,:))
-        lpoint(5) = rotateAroundPivot(r,-%pi/3,0,0,state(3)(1,:))
+    //doesn't yet support multiple objects with lagrangian points
+    //probably should be done with transformed states
+    if find(objects_with_l_points==2) then 
+        r = state(:,1,2)-state(:,1,3);
+        xl(:,1) = state(:,1,3)+r-r*(mu/3)^(1/3);
+        xl(:,2) = state(:,1,3)+r+r*(mu/3)^(1/3);
+        xl(:,3) = state(:,1,3)-r+r*mu*5/12;
+        xl(:,4) = rotateAroundPivot(r,%pi/3,0,0,state(:,1,3));
+        xl(:,5) = rotateAroundPivot(r,-%pi/3,0,0,state(:,1,3));
     end
     time(2) = time(2)+timer()
     
-    //----- Projection ------
-    if (r(1) > 0) then
-        phi = atan(r(2)/r(1));
-    elseif r(1) < 0 then
-        phi = %pi+atan(r(2)/r(1));
-    elseif r(2) > 0 then
-        phi = %pi/2;
+    iteration_counter = iteration_counter + 1;
+
+    //----- Drawing ------
+    
+//    status=orbits_draw(f,state)
+
+    //----- Transformation ------
+
+    if offset_object ~= 0 then
+
+        if rotation_object ~= 0 then
+
+            xi_axis = state(:,1,rotation_object)-state(:,1,offset_object);
+            if (xi_axis(1) > 0) then
+                phi = atan(xi_axis(2)/xi_axis(1));
+            elseif xi_axis(1) < 0 then
+                phi = %pi+atan(xi_axis(2)/xi_axis(1));
+            elseif xi_axis(2) > 0 then
+                phi = %pi/2;
+            else
+                phi = - %pi/2;
+            end
+        else
+            phi = 0;
+        end
+        for j=1:number_objects(1)
+            transformed_state(:,j) = rotate(state(:,1,j)-state(:,1,offset_object),-phi);
+        end
+
+//        xl(:,1) = rotate(xl(:,1)-state(:,1,offset_object),-phi);
+//        xl(:,2) = rotate(xl(:,2)-state(:,1,offset_object),-phi);
+//        xl(:,3) = rotate(xl(:,3)-state(:,1,offset_object),-phi);
+//        xl(:,4) = rotate(xl(:,4)-state(:,1,offset_object),-phi);
+//        xl(:,5) = rotate(xl(:,5)-state(:,1,offset_object),-phi);
     else
-        phi = - %pi/2
+        transformed_state = matrix(state(:,1,:),3,number_objects(1));
     end
 
-    offset_object=state(2)(1,:)
-//    offset_object=0
-//    phi = 0
-
-    for j=1:number_objects(1)
-        x_transformed(:,j) = rotateAroundPivot(state(j)(1,:),-phi,0,0,-offset_object)'
-    end
-    
-    xnl1 = rotate(lpoint(1)(1:2)'-offset_object(1:2)',-phi)
-    xnl2 = rotate(lpoint(2)(1:2)'-offset_object(1:2)',-phi)
-    xnl3 = rotate(lpoint(3)(1:2)'-offset_object(1:2)',-phi)
-    xnl4 = rotate(lpoint(4)(1:2)'-offset_object(1:2)',-phi)
-    xnl5 = rotate(lpoint(5)(1:2)'-offset_object(1:2)',-phi)
-
-    time(3) = time(3)+timer()
-
-    
-
-    p1(:,i) = x_transformed(:,1) 
-    p2(:,i) = xnl5
+    tracker1(:,i,1) = transformed_state(:,tracked_objects);
     //----- Drawing ------
     if i == 300 then
-        
-        
-    for j=1:number_objects(1)
-        object_size = m(j)^(1/3)*object_scale
-        object_handle(j).data = [x_transformed(1,j)-object_size/2;x_transformed(2,j)+object_size/2;object_size;object_size;0;360*64]
-    end
+
+        for j=1:number_objects(1)
+            object_size = m(j)^(1/3)*object_scale;
+            object_handle(j).data = [transformed_state(1,j)-object_size/2;transformed_state(2,j)+object_size/2;object_size;object_size;0;360*64];
+        end
 
 
-    l(1).data = [xnl1(1);xnl1(2);circsize/2;circsize/2;0;360*64]
-    l(2).data = [xnl2(1);xnl2(2);circsize/2;circsize/2;0;360*64]
-    l(3).data = [xnl3(1);xnl3(2);circsize/2;circsize/2;0;360*64]
-    l(4).data = [xnl4(1);xnl4(2);circsize/2;circsize/2;0;360*64]
-    l(5).data = [xnl5(1);xnl5(2);circsize/2;circsize/2;0;360*64]
+        l(1).data = [xl(1,1);xl(2,1);l_size/2;l_size/2;0;360*64];
+        l(2).data = [xl(1,2);xl(2,2);l_size/2;l_size/2;0;360*64];
+        l(3).data = [xl(1,3);xl(2,3);l_size/2;l_size/2;0;360*64];
+        l(4).data = [xl(1,4);xl(2,4);l_size/2;l_size/2;0;360*64];
+        l(5).data = [xl(1,5);xl(2,5);l_size/2;l_size/2;0;360*64];
 
 
+        plot(tracker1(1,:,1),tracker1(2,:,1),"r");
 
-        plot(p1(1,:),p1(2,:),"r")
-        plot(p2(1,:),p2(2,:),"b")
-        counter = counter + i
-        i=0
+        i=0;
         //----- UI Update -----
-        ui_s1.string = string(counter)+" | "+string(counter*dt/60/60/24)
+        ui_s1.string = string(iteration_counter)+" | "+string(iteration_counter*dt/60/60/24);
     end
-    time(4) = time(4)+timer()
-    disp(time)
+
+//    disp(time)
 end
