@@ -42,7 +42,8 @@ state(:,2,2) =[0;1017;0];
 state(:,2,1)=[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2);0];
 state(:,2,3)=[0;-state(2,2,2)*m(2)/m(3);0];
 
-statesN = list(state)
+states = list(state);
+statesdot = list(dgl(state));
 
 //for j = 1:number_objects(1)
 //    state(:,3,j) = [0;0;0];
@@ -85,7 +86,7 @@ offset_object=0;
 rotation_object=0;
 l_size = 384400000/50;
 objects_with_l_points = [2];
-tracked_objects=[1];
+tracked_objects=[2];
 
 draw_data = list(id,state,m,resolution,aspectratio,axis_scale,object_scale,l_size,offset_object,rotation_object,objects_with_l_points,tracked_objects);
 
@@ -134,8 +135,9 @@ while 1
 //    state_dot=dgl(state);
 //    state=state+state_dot*dt;
 //    disp(state_dot,state)
-    statesN = adamsBashforth(4,statesN,dgl,dt)
-    state=statesN(1)
+    
+    [states,statesdot] = adamsBashforth(2,states,statesdot,dgl,dt)
+    state=states(1)
 
     time(1) = time(1)+timer()
 
@@ -177,14 +179,14 @@ while 1
             phi = 0;
         end
         for j=1:number_objects(1)
-            transformed_state(:,j) = rotate(state(:,1,j)-state(:,1,offset_object),-phi);
+            transformed_state(:,j) = rotate(state(1:2,1,j)-state(1:2,1,offset_object),-phi);
         end
 
-//        xl(:,1) = rotate(xl(:,1)-state(:,1,offset_object),-phi);
-//        xl(:,2) = rotate(xl(:,2)-state(:,1,offset_object),-phi);
-//        xl(:,3) = rotate(xl(:,3)-state(:,1,offset_object),-phi);
-//        xl(:,4) = rotate(xl(:,4)-state(:,1,offset_object),-phi);
-//        xl(:,5) = rotate(xl(:,5)-state(:,1,offset_object),-phi);
+        xl(:,1) = rotateAroundPivot(xl(:,1)-state(:,1,offset_object),-phi,0,0,[0;0;0]);
+        xl(:,2) = rotateAroundPivot(xl(:,2)-state(:,1,offset_object),-phi,0,0,[0;0;0]);
+        xl(:,3) = rotateAroundPivot(xl(:,3)-state(:,1,offset_object),-phi,0,0,[0;0;0]);
+        xl(:,4) = rotateAroundPivot(xl(:,4)-state(:,1,offset_object),-phi,0,0,[0;0;0]);
+        xl(:,5) = rotateAroundPivot(xl(:,5)-state(:,1,offset_object),-phi,0,0,[0;0;0]);
     else
         transformed_state = matrix(state(:,1,:),3,number_objects(1));
     end
