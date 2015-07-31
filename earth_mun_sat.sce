@@ -4,18 +4,18 @@ chdir(get_absolute_file_path('earth_mun_sat.sce'));
 getd();
 
 function dydt = dgl(y)
-    dydt = list()
-    iteration_counter = 0;
-    dydt(j)=zeros(2,3);
-    dydt(j)(1,:)=y(j)(2,:);
-    dydt(j)(2,:) = [0,0,0];
-    for k=1:number_objects(1);
-        if (k ~= j) then
-            direction = (y(k)(1,:)-y(j)(1,:))/norm(y(k)(1,:)-y(j)(1,:))
-            partial_a = G * m(k) / norm(y(k)(1,:)-y(j)(1,:))^2
-            dydt(j)(2,:) = dydt(j)(2,:) + partial_a * direction
-        end
-    end        
+    dydt = y;
+    dydt(:,1,:) = y(:,2,:);
+    for j=1:number_objects(1);
+        dydt(:,2,j) = [0;0;0];
+        for k=1:number_objects(1);
+            if (k ~= j) then
+                direction = (y(:,1,k)-y(:,1,j))/norm(y(:,1,k)-y(:,1,j));
+                partial_a = G * m(k) / norm(y(:,1,k)-y(:,1,j))^2;
+                dydt(:,2,j) = dydt(:,2,j) + partial_a * direction;
+            end
+        end       
+    end 
 endfunction
 
 iteration_counter=0
@@ -42,13 +42,13 @@ state(:,2,2) =[0;1017;0];
 state(:,2,1)=[-sind(-60)*state(2,2,2);cosd(-60)*state(2,2,2);0];
 state(:,2,3)=[0;-state(2,2,2)*m(2)/m(3);0];
 
-for j = 1:number_objects(1)
-    state(:,3,j) = [0;0;0];
-end    
-
-update=[1,0,0;dt,1,0;1*dt^2,dt,1]; //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
-
 statesN = list(state)
+
+//for j = 1:number_objects(1)
+//    state(:,3,j) = [0;0;0];
+//end    
+//
+//update=[1,0,0;dt,1,0;1*dt^2,dt,1]; //not 100% clear why it works for 1*dt^2 and not for 0.5*dt^2
 
 //state(:,1,3)=[0;0]
 //state(:,1,2)=[mean_lunar_orbit;0]
@@ -132,11 +132,9 @@ while 1
 //                state(:,3,j) = state(:,3,j) + partial_a * direction;
     
 //    state_dot=dgl(state);
-//    for j = 1:size(state)
-//        state(j)=state(j)+state_dot(j)*dt;
-//    end
-
-//    statesN = adamsBashforth(4,statesN,dgl,dt)
+//    state=state+state_dot*dt;
+//    disp(state_dot,state)
+    statesN = adamsBashforth(4,statesN,dgl,dt)
     state=statesN(1)
 
     time(1) = time(1)+timer()
